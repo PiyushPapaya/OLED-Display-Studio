@@ -29,18 +29,18 @@ The web app handles all image processing: resizing, dithering, GIF frame extract
 ### Wiring
 
 ```
-Arduino Nano 33 BLE          SH1106 OLED Display
-─────────────────────        ───────────────────
-3.3V  ──────────────────────  VCC
-GND   ──────────────────────  GND
-A4 (SDA)  ──────────────────  SDA
-A5 (SCL)  ──────────────────  SCL
+Arduino Nano 33 BLE  --> SH1106 OLED Display
+3.3V                 --> VCC
+GND                  --> GND
+A4 (SDA)             --> SDA
+A5 (SCL)              -> SCL
 ```
 
-> **Using SSD1306 instead of SH1106?** Open `oled_display_studio.ino` and swap the display constructor:
+> If **using SSD1306 instead of SH1106**, open `oled_display_studio.ino` and swap the display constructor:
 > ```cpp
 > // Change this:
 > U8G2_SH1106_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0);
+
 > // To this:
 > U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0);
 > ```
@@ -93,20 +93,6 @@ Then:
 - Drag & drop or file picker upload
 - Works on desktop Chrome and Android Chrome
 
----
-
-## Deployment (Vercel)
-
-The web app is a single static HTML file — no build step needed.
-
-```bash
-npm i -g vercel
-vercel --prod
-```
-
-Or connect this repo to [vercel.com](https://vercel.com) for automatic deploys on push.
-
----
 
 ## Project Structure
 
@@ -136,7 +122,3 @@ Or connect this repo to [vercel.com](https://vercel.com) for automatic deploys o
 ## License
 
 MIT
-=======
-# OLED-Display-Studio
-A wireless OLED display controller that lets you upload images and animations to an Arduino Nano 33 BLE from your browser.
->>>>>>> 0df2d1bbd5962a18eb8cc9110d10a848dfc66ff4
