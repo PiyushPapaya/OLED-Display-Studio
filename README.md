@@ -1,6 +1,6 @@
 # OLED Display Studio
 
-A wireless OLED display controller that lets you upload images and animations to an Arduino Nano 33 BLE from your browser — no cables needed after flashing.
+A wireless OLED display controller that lets you upload images and animations to an Arduino Nano 33 BLE from your browser with no cables needed after flashing.
 
 **Live App:** [oled-display-studio.vercel.app](https://oled-display-studio.vercel.app/)
 
@@ -11,7 +11,7 @@ A wireless OLED display controller that lets you upload images and animations to
 1. **Flash** the Arduino sketch to your Nano 33 BLE (one-time USB step)
 2. **Open** the web app in Chrome (desktop or Android)
 3. **Connect** to the Arduino via Web Bluetooth
-4. **Upload** images or GIFs — they get converted to 128×64 monochrome bitmaps and sent over BLE
+4. **Upload** images or GIFs, they get converted to 128×64 monochrome bitmaps and sent over BLE
 5. **Watch** your OLED display play the animation wirelessly
 
 The web app handles all image processing: resizing, dithering, GIF frame extraction, and BLE chunked transfer. The Arduino stores up to 60 frames in RAM and plays them back in a loop.
@@ -23,7 +23,7 @@ The web app handles all image processing: resizing, dithering, GIF frame extract
 | Component | Details |
 |---|---|
 | **Arduino Nano 33 BLE** | Must be the BLE variant (has nRF52840 chip) |
-| **SH1106 128×64 OLED** | I2C version (4 pins). SSD1306 also works — see note below |
+| **SH1106 128×64 OLED** | I2C version (4 pins). SSD1306 also works, see note below |
 | **Jumper wires** | 4× female-to-female (or as needed for your setup) |
 
 ### Wiring
@@ -61,7 +61,7 @@ The OLED should show "Ready!" and "Waiting for connection..." once flashed.
 
 ### 2. Use the Web App
 
-Open the app in **Google Chrome** (Web Bluetooth is required — not supported in Firefox/Safari):
+Open the app in **Google Chrome** (Web Bluetooth is required, not supported in Firefox/Safari):
 
 - **Hosted:** Visit your deployed Vercel URL
 - **Local:** Run `npx serve .` in this folder, then open `http://localhost:3000`
