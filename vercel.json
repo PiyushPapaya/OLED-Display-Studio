@@ -2,14 +2,11 @@
   "version": 2,
   "builds": [
     {
-      "source": "/(.*\\.svg)",
-      "headers": [
-        {
-          "key": "Cross-Origin-Resource-Policy",
-          "value": "same-origin"
-        }
-      ]
-    },
+      "src": "index.html",
+      "use": "@vercel/static"
+    }
+  ],
+  "headers": [
     {
       "source": "/(.*)",
       "headers": [
@@ -26,9 +23,12 @@
           "value": "same-origin"
         }
       ]
-    }
+    },
+    {
+      "source": "/(.*\\.svg)",
+      "headers": [
         {
-          "key": "Cross-Origin-Opener-Policy",
+          "key": "Cross-Origin-Resource-Policy",
           "value": "same-origin"
         }
       ]
