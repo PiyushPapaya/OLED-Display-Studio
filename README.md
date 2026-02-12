@@ -2,7 +2,7 @@
 
 A wireless OLED display controller that lets you upload images and animations to an Arduino Nano 33 BLE from your browser — no cables needed after flashing.
 
-**Live App:** [oled-display-studio.vercel.app](https://oled-display-studio.vercel.app/)*
+**Live App:** [oled-display-studio.vercel.app](https://oled-display-studio.vercel.app/)
 
 ---
 
@@ -40,7 +40,6 @@ A5 (SCL)              -> SCL
 > ```cpp
 > // Change this:
 > U8G2_SH1106_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0);
-
 > // To this:
 > U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0);
 > ```
@@ -76,8 +75,8 @@ Then:
 
 ### Supported Formats
 
-- **PNG / JPG** — uploaded as a single static frame
-- **Animated GIF** — automatically split into individual frames (up to 60)
+- **PNG / JPG** uploaded as a single static frame
+- **Animated GIF** automatically split into individual frames (up to 60)
 - Images are resized to 128×64 and dithered to monochrome automatically
 
 ---
@@ -112,10 +111,10 @@ Then:
 | Problem | Fix |
 |---|---|
 | Bluetooth popup doesn't show the device | Make sure the Arduino is powered on and not connected to another device |
-| "BLE Error!" on OLED screen | Check wiring — SDA/SCL might be swapped |
+| "BLE Error!" on OLED screen | Check wiring, SDA/SCL might be swapped |
 | Display stays black | Try switching to the SSD1306 constructor (see wiring section) |
 | Frames don't send | Refresh the browser, reconnect, and try again |
-| Chrome says "Bluetooth not supported" | Use Chrome on desktop or Android — iOS and Firefox don't support Web Bluetooth |
+| Chrome says "Bluetooth not supported" | Use Chrome on desktop or Android, iOS and Firefox don't support Web Bluetooth |
 
 ---
 
