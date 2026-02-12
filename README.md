@@ -2,7 +2,7 @@
 
 A wireless OLED display controller that lets you upload images and animations to an Arduino Nano 33 BLE from your browser — no cables needed after flashing.
 
-**Live App:** [oled-display-studio.vercel.app](https://oled-display-studio.vercel.app) *(update with your actual URL)*
+**Live App:** [oled-display-studio.vercel.app](https://oled-display-studio.vercel.app/)*
 
 ---
 
