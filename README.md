@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # OLED Display Studio
 
 A wireless OLED display controller that lets you upload images and animations to an Arduino Nano 33 BLE from your browser — no cables needed after flashing.
@@ -136,3 +137,7 @@ Or connect this repo to [vercel.com](https://vercel.com) for automatic deploys o
 ## License
 
 MIT
+=======
+# OLED-Display-Studio
+A wireless OLED display controller that lets you upload images and animations to an Arduino Nano 33 BLE from your browser.
+>>>>>>> 0df2d1bbd5962a18eb8cc9110d10a848dfc66ff4
