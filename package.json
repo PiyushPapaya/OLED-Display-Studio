@@ -1,0 +1,26 @@
+{
+  "name": "oled-display-studio",
+  "version": "1.0.0",
+  "description": "Professional Arduino Nano 33 BLE + OLED display controller with modern web interface",
+  "main": "index.html",
+  "scripts": {
+    "dev": "npx serve .",
+    "deploy": "vercel --prod"
+  },
+  "keywords": [
+    "arduino",
+    "oled",
+    "bluetooth",
+    "web-bluetooth",
+    "display",
+    "controller",
+    "nano-33-ble"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {},
+  "repository": {
+    "type": "git",
+    "url": ""
+  }
+}

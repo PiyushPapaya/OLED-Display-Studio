@@ -1,0 +1,2562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OLED Display Studio – Professional Display Controller</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script type="module">
+    // gifuct-js v2.1.2 is CJS-only (no dist/ UMD build), so load via esm.sh
+    try {
+      const { parseGIF, decompressFrames } = await import('https://esm.sh/gifuct-js@2.1.2');
+      window.gifuct = { parseGIF, decompressFrames };
+      console.log('gifuct-js loaded via esm.sh');
+    } catch(e) {
+      try {
+        const { parseGIF, decompressFrames } = await import('https://esm.run/gifuct-js@2.1.2');
+        window.gifuct = { parseGIF, decompressFrames };
+        console.log('gifuct-js loaded via esm.run');
+      } catch(e2) {
+        console.warn('Failed to load gifuct-js:', e2);
+      }
+    }
+  </script>
+  <style>
+    /* ============================================
+       DESIGN SYSTEM & VARIABLES
+       ============================================ */
+    :root {
+      /* Colors - Neutral */
+      --gray-50: #fafafa;
+      --gray-100: #f5f5f5;
+      --gray-200: #e5e5e5;
+      --gray-300: #d4d4d4;
+      --gray-400: #a3a3a3;
+      --gray-500: #737373;
+      --gray-600: #525252;
+      --gray-700: #404040;
+      --gray-800: #262626;
+      --gray-900: #171717;
+      
+      /* Colors - Primary */
+      --primary-50: #f0f9ff;
+      --primary-100: #e0f2fe;
+      --primary-500: #3b82f6;
+      --primary-600: #2563eb;
+      --primary-700: #1d4ed8;
+      
+      /* Colors - Semantic */
+      --success: #10b981;
+      --success-bg: #d1fae5;
+      --error: #ef4444;
+      --error-bg: #fee2e2;
+      --warning: #f59e0b;
+      --warning-bg: #fef3c7;
+      
+      /* Spacing Scale (8px base) */
+      --space-1: 4px;
+      --space-2: 8px;
+      --space-3: 12px;
+      --space-4: 16px;
+      --space-5: 20px;
+      --space-6: 24px;
+      --space-8: 32px;
+      --space-10: 40px;
+      --space-12: 48px;
+      --space-16: 64px;
+      --space-20: 80px;
+      
+      /* Border Radius */
+      --radius-sm: 6px;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+      --radius-xl: 16px;
+      
+      /* Shadows */
+      --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+      --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+      --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+      --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+      
+      /* Typography */
+      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      
+      /* Transitions */
+      --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+      --transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+      --transition-smooth: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    /* ============================================
+       RESET & BASE STYLES
+       ============================================ */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    
+    html {
+      font-size: 16px;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+    
+    body {
+      font-family: var(--font-sans);
+      background: var(--gray-50);
+      color: var(--gray-900);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+    
+    /* ============================================
+       NAVIGATION
+       ============================================ */
+    .nav {
+      background: white;
+      border-bottom: 1px solid var(--gray-200);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: blur(8px);
+      background: rgba(255, 255, 255, 0.8);
+    }
+    
+    .nav-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 var(--space-6);
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      font-weight: 600;
+      font-size: 18px;
+      color: var(--gray-900);
+    }
+    
+    .nav-logo {
+      width: 32px;
+      height: 32px;
+      background: linear-gradient(135deg, var(--primary-600), var(--primary-500));
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+    
+    .connection-badge {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      padding: var(--space-2) var(--space-4);
+      border-radius: var(--radius-lg);
+      font-size: 14px;
+      font-weight: 500;
+      transition: all var(--transition-base);
+    }
+    
+    .connection-badge.disconnected {
+      background: var(--gray-100);
+      color: var(--gray-600);
+    }
+    
+    .connection-badge.connected {
+      background: var(--success-bg);
+      color: var(--success);
+    }
+    
+    .connection-badge .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+      animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    
+    /* ============================================
+       HERO SECTION
+       ============================================ */
+    .hero {
+      background: white;
+      border-bottom: 1px solid var(--gray-200);
+      padding: var(--space-16) 0;
+    }
+    
+    .hero-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 var(--space-6);
+      text-align: center;
+    }
+    
+    .hero-title {
+      font-size: 48px;
+      font-weight: 700;
+      line-height: 1.1;
+      letter-spacing: -0.02em;
+      margin-bottom: var(--space-4);
+      background: linear-gradient(135deg, var(--gray-900), var(--gray-600));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    
+    .hero-subtitle {
+      font-size: 20px;
+      color: var(--gray-600);
+      max-width: 600px;
+      margin: 0 auto var(--space-8);
+      line-height: 1.6;
+    }
+    
+    .hero-actions {
+      display: flex;
+      gap: var(--space-4);
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    
+    /* ============================================
+       MAIN CONTENT
+       ============================================ */
+    .main {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: var(--space-12) var(--space-6);
+    }
+    
+    .grid {
+      display: grid;
+      gap: var(--space-6);
+    }
+    
+    @media (min-width: 768px) {
+      .grid-cols-2 {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+    
+    @media (min-width: 1024px) {
+      .grid-cols-3 {
+        grid-template-columns: repeat(3, 1fr);
+      }
+      
+      .grid-2-1 {
+        grid-template-columns: 2fr 1fr;
+      }
+    }
+    
+    /* ============================================
+       CARDS
+       ============================================ */
+    .card {
+      background: white;
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius-xl);
+      padding: var(--space-6);
+      transition: all var(--transition-base);
+    }
+    
+    .card:hover {
+      border-color: var(--gray-300);
+      box-shadow: var(--shadow-md);
+    }
+    
+    .card-header {
+      margin-bottom: var(--space-6);
+    }
+    
+    .card-title {
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--gray-900);
+      margin-bottom: var(--space-2);
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+    }
+    
+    .card-description {
+      font-size: 14px;
+      color: var(--gray-600);
+      line-height: 1.5;
+    }
+    
+    /* ============================================
+       BUTTONS
+       ============================================ */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-2);
+      padding: var(--space-3) var(--space-5);
+      font-size: 15px;
+      font-weight: 500;
+      font-family: var(--font-sans);
+      border: none;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      white-space: nowrap;
+      user-select: none;
+    }
+    
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none !important;
+    }
+    
+    .btn:not(:disabled):hover {
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-md);
+    }
+    
+    .btn:not(:disabled):active {
+      transform: translateY(0);
+    }
+    
+    .btn-primary {
+      background: var(--primary-600);
+      color: white;
+    }
+    
+    .btn-primary:not(:disabled):hover {
+      background: var(--primary-700);
+    }
+    
+    .btn-secondary {
+      background: white;
+      color: var(--gray-700);
+      border: 1px solid var(--gray-300);
+    }
+    
+    .btn-secondary:not(:disabled):hover {
+      background: var(--gray-50);
+      border-color: var(--gray-400);
+    }
+    
+    .btn-success {
+      background: var(--success);
+      color: white;
+    }
+    
+    .btn-danger {
+      background: var(--error);
+      color: white;
+    }
+    
+    .btn-ghost {
+      background: transparent;
+      color: var(--gray-700);
+    }
+    
+    .btn-ghost:not(:disabled):hover {
+      background: var(--gray-100);
+    }
+    
+    .btn-sm {
+      padding: var(--space-2) var(--space-3);
+      font-size: 14px;
+    }
+    
+    .btn-lg {
+      padding: var(--space-4) var(--space-8);
+      font-size: 16px;
+    }
+    
+    .btn-full {
+      width: 100%;
+    }
+    
+    /* ============================================
+       DROP ZONE
+       ============================================ */
+    .drop-zone {
+      border: 2px dashed var(--gray-300);
+      border-radius: var(--radius-xl);
+      padding: var(--space-12);
+      text-align: center;
+      cursor: pointer;
+      transition: all var(--transition-base);
+      background: var(--gray-50);
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .drop-zone::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, var(--primary-50), transparent);
+      opacity: 0;
+      transition: opacity var(--transition-base);
+    }
+    
+    .drop-zone:hover {
+      border-color: var(--primary-500);
+      background: var(--primary-50);
+    }
+    
+    .drop-zone:hover::before {
+      opacity: 1;
+    }
+    
+    .drop-zone.dragover {
+      border-color: var(--primary-600);
+      background: var(--primary-100);
+      transform: scale(1.02);
+    }
+    
+    .drop-zone-content {
+      position: relative;
+      z-index: 1;
+    }
+    
+    .drop-zone-icon {
+      width: 64px;
+      height: 64px;
+      margin: 0 auto var(--space-4);
+      background: white;
+      border-radius: var(--radius-lg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      box-shadow: var(--shadow-sm);
+    }
+    
+    .drop-zone-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--gray-900);
+      margin-bottom: var(--space-2);
+    }
+    
+    .drop-zone-subtitle {
+      font-size: 14px;
+      color: var(--gray-600);
+      margin-bottom: var(--space-4);
+    }
+    
+    .drop-zone-hint {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-2);
+      font-size: 12px;
+      color: var(--gray-500);
+      background: white;
+      padding: var(--space-2) var(--space-3);
+      border-radius: var(--radius-md);
+    }
+    
+    .file-input {
+      display: none;
+    }
+    
+    /* ============================================
+       PREVIEW
+       ============================================ */
+    .preview-container {
+      background: var(--gray-900);
+      border-radius: var(--radius-lg);
+      padding: var(--space-8);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: var(--space-4);
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .preview-container::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), transparent);
+      pointer-events: none;
+    }
+    
+    .preview-canvas {
+      border: 2px solid var(--gray-700);
+      border-radius: var(--radius-md);
+      image-rendering: pixelated;
+      max-width: 100%;
+      height: auto;
+      box-shadow: 0 0 40px rgba(59, 130, 246, 0.2);
+      position: relative;
+      z-index: 1;
+    }
+    
+    .preview-info {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      padding: var(--space-3) var(--space-4);
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(8px);
+      border-radius: var(--radius-md);
+      color: white;
+      font-size: 14px;
+      position: relative;
+      z-index: 1;
+    }
+    
+    .preview-controls {
+      display: flex;
+      gap: var(--space-2);
+    }
+    
+    .preview-controls .btn {
+      background: rgba(255, 255, 255, 0.1);
+      color: white;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      backdrop-filter: blur(8px);
+    }
+    
+    .preview-controls .btn:not(:disabled):hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+    
+    /* ============================================
+       CONTROLS
+       ============================================ */
+    .control-group {
+      margin-bottom: var(--space-5);
+    }
+    
+    .control-group:last-child {
+      margin-bottom: 0;
+    }
+    
+    .control-label {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: var(--space-3);
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--gray-700);
+    }
+    
+    .control-value {
+      font-weight: 600;
+      color: var(--primary-600);
+      background: var(--primary-50);
+      padding: var(--space-1) var(--space-3);
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+    }
+    
+    input[type="range"] {
+      width: 100%;
+      height: 6px;
+      border-radius: 3px;
+      background: var(--gray-200);
+      outline: none;
+      -webkit-appearance: none;
+      cursor: pointer;
+    }
+    
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--primary-600);
+      cursor: pointer;
+      box-shadow: var(--shadow-sm);
+      transition: all var(--transition-fast);
+    }
+    
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.1);
+      box-shadow: var(--shadow-md);
+    }
+    
+    input[type="range"]::-moz-range-thumb {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--primary-600);
+      cursor: pointer;
+      border: none;
+      box-shadow: var(--shadow-sm);
+      transition: all var(--transition-fast);
+    }
+    
+    input[type="range"]::-moz-range-thumb:hover {
+      transform: scale(1.1);
+      box-shadow: var(--shadow-md);
+    }
+    
+    .control-hint {
+      font-size: 12px;
+      color: var(--gray-500);
+      margin-top: var(--space-2);
+    }
+    
+    /* ============================================
+       TOGGLE SWITCH
+       ============================================ */
+    .toggle-group {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--space-3) var(--space-4);
+      background: var(--gray-50);
+      border-radius: var(--radius-md);
+      border: 1px solid var(--gray-200);
+      transition: all var(--transition-base);
+    }
+    
+    .toggle-group:hover {
+      background: var(--gray-100);
+    }
+    
+    .toggle-group label {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--gray-700);
+      cursor: pointer;
+    }
+    
+    .toggle {
+      position: relative;
+      width: 44px;
+      height: 24px;
+      background: var(--gray-300);
+      border-radius: 12px;
+      cursor: pointer;
+      transition: background var(--transition-base);
+    }
+    
+    .toggle.active {
+      background: var(--success);
+    }
+    
+    .toggle-slider {
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 20px;
+      height: 20px;
+      background: white;
+      border-radius: 50%;
+      transition: transform var(--transition-base);
+      box-shadow: var(--shadow-sm);
+    }
+    
+    .toggle.active .toggle-slider {
+      transform: translateX(20px);
+    }
+    
+    /* ============================================
+       FRAMES GRID
+       ============================================ */
+    .frames-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: var(--space-4);
+    }
+    
+    .frames-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: var(--space-3);
+      max-height: 500px;
+      overflow-y: auto;
+      padding: var(--space-2);
+      margin: calc(var(--space-2) * -1);
+    }
+    
+    .frames-grid::-webkit-scrollbar {
+      width: 8px;
+    }
+    
+    .frames-grid::-webkit-scrollbar-track {
+      background: var(--gray-100);
+      border-radius: 4px;
+    }
+    
+    .frames-grid::-webkit-scrollbar-thumb {
+      background: var(--gray-400);
+      border-radius: 4px;
+    }
+    
+    .frames-grid::-webkit-scrollbar-thumb:hover {
+      background: var(--gray-500);
+    }
+    
+    .frame-item {
+      position: relative;
+      background: var(--gray-900);
+      border: 2px solid var(--gray-300);
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      overflow: hidden;
+      aspect-ratio: 2 / 1;
+    }
+    
+    .frame-item:hover {
+      border-color: var(--primary-500);
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
+    }
+    
+    .frame-item.active {
+      border-color: var(--success);
+      box-shadow: 0 0 0 3px var(--success-bg);
+    }
+    
+    .frame-item canvas {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      image-rendering: pixelated;
+      display: block;
+    }
+    
+    .frame-badge {
+      position: absolute;
+      top: var(--space-2);
+      left: var(--space-2);
+      background: rgba(0, 0, 0, 0.8);
+      backdrop-filter: blur(4px);
+      color: white;
+      padding: var(--space-1) var(--space-2);
+      border-radius: var(--radius-sm);
+      font-size: 11px;
+      font-weight: 600;
+    }
+    
+    .frame-delete {
+      position: absolute;
+      top: var(--space-2);
+      right: var(--space-2);
+      width: 24px;
+      height: 24px;
+      background: var(--error);
+      color: white;
+      border: none;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      font-size: 14px;
+      opacity: 0;
+      transition: all var(--transition-fast);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .frame-item:hover .frame-delete {
+      opacity: 1;
+    }
+    
+    .frame-delete:hover {
+      background: #dc2626;
+      transform: scale(1.1);
+    }
+    
+    .frames-empty {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: var(--space-12) var(--space-6);
+      color: var(--gray-500);
+    }
+    
+    .frames-empty-icon {
+      font-size: 48px;
+      margin-bottom: var(--space-4);
+      opacity: 0.5;
+    }
+    
+    /* ============================================
+       STATUS LOG
+       ============================================ */
+    .status-log {
+      background: var(--gray-900);
+      border-radius: var(--radius-lg);
+      padding: var(--space-4);
+      font-family: 'SF Mono', 'Monaco', 'Courier New', monospace;
+      font-size: 12px;
+      max-height: 240px;
+      overflow-y: auto;
+      color: var(--gray-300);
+    }
+    
+    .status-log::-webkit-scrollbar {
+      width: 6px;
+    }
+    
+    .status-log::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 3px;
+    }
+    
+    .status-log::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 3px;
+    }
+    
+    .log-entry {
+      padding: var(--space-2) var(--space-3);
+      border-radius: var(--radius-sm);
+      margin-bottom: var(--space-2);
+      line-height: 1.5;
+      display: flex;
+      align-items: flex-start;
+      gap: var(--space-2);
+      animation: slideIn 0.3s ease;
+    }
+    
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(-4px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    .log-entry.info { background: rgba(59, 130, 246, 0.1); color: #93c5fd; }
+    .log-entry.success { background: rgba(16, 185, 129, 0.1); color: #6ee7b7; }
+    .log-entry.warning { background: rgba(245, 158, 11, 0.1); color: #fcd34d; }
+    .log-entry.error { background: rgba(239, 68, 68, 0.1); color: #fca5a5; }
+    
+    .log-time {
+      opacity: 0.6;
+      white-space: nowrap;
+    }
+    
+    /* ============================================
+       MODAL
+       ============================================ */
+    .modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(4px);
+      align-items: center;
+      justify-content: center;
+      padding: var(--space-6);
+      animation: fadeIn 0.2s ease;
+    }
+    
+    .modal.active {
+      display: flex;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    
+    .modal-content {
+      background: white;
+      border-radius: var(--radius-xl);
+      padding: var(--space-8);
+      max-width: 500px;
+      width: 100%;
+      box-shadow: var(--shadow-xl);
+      animation: slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: var(--space-6);
+    }
+    
+    .modal-title {
+      font-size: 24px;
+      font-weight: 600;
+      color: var(--gray-900);
+    }
+    
+    .modal-close {
+      width: 32px;
+      height: 32px;
+      border: none;
+      background: var(--gray-100);
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      font-size: 18px;
+      color: var(--gray-600);
+      transition: all var(--transition-fast);
+    }
+    
+    .modal-close:hover {
+      background: var(--gray-200);
+      transform: rotate(90deg);
+    }
+    
+    /* ============================================
+       BACKGROUND OPTIONS
+       ============================================ */
+    .bg-options {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: var(--space-3);
+      margin-bottom: var(--space-6);
+    }
+    
+    .bg-option {
+      aspect-ratio: 1;
+      border: 2px solid var(--gray-300);
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .bg-option:hover {
+      border-color: var(--primary-500);
+      transform: scale(1.05);
+    }
+    
+    .bg-option.active {
+      border-color: var(--success);
+      box-shadow: 0 0 0 3px var(--success-bg);
+    }
+    
+    .bg-option.black {
+      background: #000;
+      color: white;
+    }
+    
+    .bg-option.white {
+      background: #fff;
+      color: #000;
+    }
+    
+    .bg-option.fit {
+      background: linear-gradient(45deg, #ddd 25%, transparent 25%, transparent 75%, #ddd 75%, #ddd),
+                  linear-gradient(45deg, #ddd 25%, transparent 25%, transparent 75%, #ddd 75%, #ddd);
+      background-size: 20px 20px;
+      background-position: 0 0, 10px 10px;
+    }
+    
+    /* ============================================
+       SKELETON LOADER
+       ============================================ */
+    .skeleton {
+      background: linear-gradient(90deg, var(--gray-200) 25%, var(--gray-100) 50%, var(--gray-200) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+      border-radius: var(--radius-md);
+    }
+    
+    @keyframes shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+    
+    /* ============================================
+       RESPONSIVE
+       ============================================ */
+    @media (max-width: 1024px) {
+      .hero-title {
+        font-size: 36px;
+      }
+      
+      .hero-subtitle {
+        font-size: 18px;
+      }
+    }
+    
+    @media (max-width: 768px) {
+      .nav-container {
+        padding: 0 var(--space-4);
+      }
+      
+      .hero {
+        padding: var(--space-12) 0;
+      }
+      
+      .hero-title {
+        font-size: 32px;
+      }
+      
+      .hero-subtitle {
+        font-size: 16px;
+      }
+      
+      .hero-actions {
+        flex-direction: column;
+        width: 100%;
+      }
+      
+      .hero-actions .btn {
+        width: 100%;
+      }
+      
+      .main {
+        padding: var(--space-8) var(--space-4);
+      }
+      
+      .grid {
+        gap: var(--space-4);
+      }
+      
+      .frames-grid {
+        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+      }
+      
+      .drop-zone {
+        padding: var(--space-8);
+      }
+    }
+    
+    /* ============================================
+       ACCESSIBILITY
+       ============================================ */
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border-width: 0;
+    }
+    
+    *:focus-visible {
+      outline: 2px solid var(--primary-600);
+      outline-offset: 2px;
+    }
+    
+    /* ============================================
+       UTILITIES
+       ============================================ */
+    .divider {
+      height: 1px;
+      background: var(--gray-200);
+      margin: var(--space-6) 0;
+    }
+    
+    .text-center {
+      text-align: center;
+    }
+    
+    .flex-center {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .gap-2 { gap: var(--space-2); }
+    .gap-3 { gap: var(--space-3); }
+    .gap-4 { gap: var(--space-4); }
+  </style>
+</head>
+<body>
+  <!-- Navigation -->
+  <nav class="nav" role="navigation">
+    <div class="nav-container">
+      <div class="nav-brand">
+        <div class="nav-logo">🖥️</div>
+        <span>OLED Display Studio</span>
+      </div>
+      <div class="connection-badge disconnected" id="connectionBadge" role="status" aria-live="polite">
+        <span class="dot"></span>
+        <span id="connectionText">Disconnected</span>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="hero-container">
+      <h1 class="hero-title">Professional OLED Display Controller</h1>
+      <p class="hero-subtitle">
+        Upload images and animations to your Arduino Nano 33 BLE via Bluetooth. 
+        No cables, no hassle—just wireless creativity.
+      </p>
+      <div class="hero-actions">
+        <button id="connectBtn" class="btn btn-primary btn-lg" onclick="connect()">
+          📡 Connect Device
+        </button>
+        <button id="disconnectBtn" class="btn btn-secondary btn-lg" onclick="disconnect()" style="display:none;">
+          ⏻ Disconnect
+        </button>
+        <button class="btn btn-secondary btn-lg" onclick="document.getElementById('fileInput').click()">
+          📁 Choose Files
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Main Content -->
+  <main class="main">
+    <!-- Upload Section -->
+    <div class="card">
+      <div class="card-header">
+        <h2 class="card-title">
+          <span>📤</span>
+          Upload Images
+        </h2>
+        <p class="card-description">
+          Drag and drop images or GIFs, or click to browse. Supports PNG, JPG, and animated GIFs up to 60 frames.
+        </p>
+      </div>
+      
+      <div id="dropZone" class="drop-zone" onclick="document.getElementById('fileInput').click()">
+        <div class="drop-zone-content">
+          <div class="drop-zone-icon">🎯</div>
+          <div class="drop-zone-title">Drop files here</div>
+          <div class="drop-zone-subtitle">or click to browse your computer</div>
+          <div class="drop-zone-hint">
+            <span>📁</span>
+            <span>PNG, JPG, GIF • Max 60 frames</span>
+          </div>
+        </div>
+      </div>
+      <input type="file" id="fileInput" class="file-input" accept="image/*" multiple aria-label="Upload image files" />
+    </div>
+
+    <!-- Main Grid -->
+    <div class="grid grid-2-1">
+      <!-- Left Column -->
+      <div class="grid" style="grid-template-rows: auto auto 1fr; align-content: start;">
+        <!-- Preview Card -->
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">
+              <span>👁️</span>
+              Live Preview
+            </h2>
+            <p class="card-description">Real-time preview of your display output (128×64 pixels)</p>
+          </div>
+          
+          <div class="preview-container">
+            <canvas id="previewCanvas" class="preview-canvas" width="128" height="64" aria-label="Preview canvas showing current frame"></canvas>
+            <div class="preview-info">
+              <span id="frameInfo">No frames loaded</span>
+              <div class="preview-controls">
+                <button class="btn btn-sm" onclick="prevFrame()" id="prevBtn" disabled aria-label="Previous frame">◀</button>
+                <button class="btn btn-sm" onclick="toggleAnimationPreview()" id="playBtn" disabled aria-label="Play/Stop animation" title="Preview animation">▶</button>
+                <button class="btn btn-sm" onclick="nextFrame()" id="nextBtn" disabled aria-label="Next frame">▶▶</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Actions Card -->
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">
+              <span>⚡</span>
+              Actions
+            </h2>
+          </div>
+          
+          <div class="grid gap-3">
+            <button id="sendBtn" class="btn btn-success btn-full" onclick="sendToDisplay()" disabled>
+              <span>📤</span>
+              <span>Send to Display</span>
+            </button>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3);">
+              <button id="frameSettingsBtn" class="btn btn-secondary" onclick="openFrameSettings()" disabled>
+                <span>⚙️</span>
+                <span>Settings</span>
+              </button>
+              <button id="clearBtn" class="btn btn-danger" onclick="clearDisplay()" disabled>
+                <span>🗑️</span>
+                <span>Clear</span>
+              </button>
+            </div>
+            <button id="testBtn" class="btn btn-ghost btn-full" onclick="sendTestPattern()" disabled>
+              <span>🧪</span>
+              <span>Test Pattern</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Activity Log -->
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">
+              <span>📋</span>
+              Activity Log
+            </h2>
+          </div>
+          <div id="log" class="status-log" role="log" aria-live="polite" aria-atomic="false"></div>
+        </div>
+      </div>
+
+      <!-- Right Column -->
+      <div class="grid" style="align-content: start;">
+        <!-- Frames Gallery -->
+        <div class="card">
+          <div class="frames-header">
+            <h2 class="card-title">
+              <span>🎞️</span>
+              Frames
+              <span id="frameCount" style="font-size: 14px; font-weight: 500; color: var(--gray-500);">(0)</span>
+            </h2>
+          </div>
+          <div id="framesGrid" class="frames-grid">
+            <div class="frames-empty">
+              <div class="frames-empty-icon">📁</div>
+              <div>No frames loaded</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">
+              <span>🎛️</span>
+              Settings
+            </h2>
+            <p class="card-description">Adjust display parameters</p>
+          </div>
+          
+          <div class="control-group">
+            <div class="control-label">
+              <span>Animation Speed</span>
+              <span class="control-value" id="speedValue">100ms</span>
+            </div>
+            <input type="range" id="speedSlider" min="10" max="60000" value="100" step="10" oninput="updateSpeed()" aria-label="Animation speed slider">
+            <div class="control-hint">Delay between frames (10ms to 60s)</div>
+          </div>
+          
+          <div class="control-group">
+            <div class="control-label">
+              <span>Threshold</span>
+              <span class="control-value" id="thresholdValue">128</span>
+            </div>
+            <input type="range" id="thresholdSlider" min="0" max="255" value="128" oninput="updatePreview()" aria-label="Threshold slider">
+            <button onclick="autoThreshold()" class="btn btn-secondary btn-full" style="margin-top: var(--space-3);">
+              <span>🎯</span>
+              <span>Auto-Optimize</span>
+            </button>
+            <div class="control-hint">Black/white conversion threshold</div>
+          </div>
+          
+          <div class="control-group">
+            <div class="control-label">
+              <span>Brightness</span>
+              <span class="control-value" id="brightnessValue">0</span>
+            </div>
+            <input type="range" id="brightnessSlider" min="-100" max="100" value="0" oninput="updatePreview()" aria-label="Brightness slider">
+          </div>
+          
+          <div class="control-group">
+            <div class="control-label">
+              <span>Contrast</span>
+              <span class="control-value" id="contrastValue">100%</span>
+            </div>
+            <input type="range" id="contrastSlider" min="50" max="200" value="100" oninput="updatePreview()" aria-label="Contrast slider">
+          </div>
+          
+          <div class="toggle-group">
+            <label for="invertToggle">Invert Colors</label>
+            <div class="toggle" id="invertToggle" onclick="toggleInvert()" role="switch" aria-checked="false" tabindex="0">
+              <div class="toggle-slider"></div>
+            </div>
+          </div>
+          
+          <div class="divider"></div>
+          
+          <button class="btn btn-secondary btn-full" onclick="applySettingsToAllFrames()" style="margin-bottom: var(--space-3);">
+            <span>📋</span>
+            <span>Apply Settings to All Frames</span>
+          </button>
+          
+          <button class="btn btn-secondary btn-full" onclick="resetSettings()">
+            <span>🔄</span>
+            <span>Reset All Settings</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Frame Settings Modal -->
+  <div id="frameModal" class="modal" role="dialog" aria-labelledby="modalTitle" aria-modal="true">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 id="modalTitle" class="modal-title">Frame Settings</h2>
+        <button class="modal-close" onclick="closeFrameSettings()" aria-label="Close modal">✕</button>
+      </div>
+      
+      <div class="control-group">
+        <div class="control-label">
+          <span>Background Mode</span>
+        </div>
+        <div class="bg-options">
+          <div class="bg-option black active" onclick="selectBg('black')" title="Black background" role="button" tabindex="0">
+            ⬛
+          </div>
+          <div class="bg-option white" onclick="selectBg('white')" title="White background" role="button" tabindex="0">
+            ⬜
+          </div>
+          <div class="bg-option fit" onclick="selectBg('fit')" title="Fit to display" role="button" tabindex="0">
+            📐
+          </div>
+        </div>
+      </div>
+      
+      <div class="control-group">
+        <div class="control-label">
+          <span>Frame Duration Override</span>
+          <span class="control-value" id="frameDurationValue">Default</span>
+        </div>
+        <input type="range" id="frameDurationSlider" min="0" max="2000" value="0" step="50" oninput="updateFrameDuration()" aria-label="Frame duration slider">
+        <div class="control-hint">0 = use global speed • Custom delay for this frame</div>
+      </div>
+      
+      <button class="btn btn-primary btn-full btn-lg" onclick="applyFrameSettings()">
+        <span>✓</span>
+        <span>Apply to Current Frame</span>
+      </button>
+    </div>
+  </div>
+
+  <script>
+    // ============================================
+    // GLOBAL STATE
+    // ============================================
+    let bleDevice;
+    let oledDataChar;
+    let controlChar;
+    let speedChar;
+    let allFrames = [];
+    let frameSettings = [];
+    let currentFrameIndex = 0;
+    let processedBitmaps = [];
+    let animationSpeed = 100;
+    let reconnectAttempts = 0;
+    let maxReconnectAttempts = 5;
+    let reconnectTimeout = null;
+    let currentBgMode = 'black';
+    let animationPreviewTimer = null;
+    let isPreviewPlaying = false;
+
+    // ============================================
+    // INITIALIZATION
+    // ============================================
+    window.onload = function() {
+      setupDropZone();
+      setupFileInput();
+      log('System ready. Connect your device to begin.', 'info');
+      
+      let retries = 0;
+      const checkGifLib = () => {
+        if(window.gifuct && typeof window.gifuct.parseGIF === 'function') {
+          log('GIF support enabled ✓', 'success');
+        } else if(retries < 5) {
+          retries++;
+          setTimeout(checkGifLib, 1000);
+        } else {
+          log('GIF library unavailable. PNG/JPG still supported.', 'warning');
+        }
+      };
+      setTimeout(checkGifLib, 500);
+    };
+
+    // ============================================
+    // LOGGING
+    // ============================================
+    function log(message, type = 'info') {
+      const logDiv = document.getElementById('log');
+      const entry = document.createElement('div');
+      entry.className = `log-entry ${type}`;
+      
+      const time = document.createElement('span');
+      time.className = 'log-time';
+      time.textContent = new Date().toLocaleTimeString();
+      
+      const text = document.createElement('span');
+      text.textContent = message;
+      
+      entry.appendChild(time);
+      entry.appendChild(text);
+      logDiv.appendChild(entry);
+      logDiv.scrollTop = logDiv.scrollHeight;
+      
+      while(logDiv.children.length > 50) {
+        logDiv.removeChild(logDiv.firstChild);
+      }
+    }
+
+    // ============================================
+    // BLE CONNECTION
+    // ============================================
+    async function connect() {
+      // Check if already connected
+      if(bleDevice && bleDevice.gatt.connected) {
+        log('Already connected to ' + bleDevice.name, 'warning');
+        return;
+      }
+      
+      try {
+        log('Searching for device...', 'info');
+        
+        bleDevice = await navigator.bluetooth.requestDevice({
+          filters: [{ namePrefix: 'Nano33' }],
+          optionalServices: ['12345678-1234-1234-1234-1234567890ab']
+        });
+
+        log('Connecting...', 'info');
+        bleDevice.addEventListener('gattserverdisconnected', onDisconnected);
+        
+        await connectToDevice();
+        
+      } catch(error) {
+        log('Connection failed: ' + error.message, 'error');
+        updateConnectionStatus(false);
+      }
+    }
+
+    async function connectToDevice() {
+      try {
+        // Check if we need to reconnect
+        if(bleDevice && bleDevice.gatt.connected) {
+          log('Using existing connection', 'info');
+          // Still try to get characteristics in case they weren't initialized
+        }
+        
+        const server = await bleDevice.gatt.connect();
+        const service = await server.getPrimaryService('12345678-1234-1234-1234-1234567890ab');
+        oledDataChar = await service.getCharacteristic('87654321-4321-4321-4321-ba0987654321');
+        controlChar = await service.getCharacteristic('87654321-4321-4321-4321-ba0987654322');
+        
+        try {
+          speedChar = await service.getCharacteristic('87654321-4321-4321-4321-ba0987654323');
+          log('Speed control available', 'success');
+        } catch(e) {
+          log('Speed control not available', 'warning');
+        }
+        
+        updateConnectionStatus(true);
+        reconnectAttempts = 0;
+        
+        if(reconnectTimeout) {
+          clearTimeout(reconnectTimeout);
+          reconnectTimeout = null;
+        }
+        
+        log('Connected to ' + bleDevice.name, 'success');
+        
+      } catch(error) {
+        throw error;
+      }
+    }
+
+    async function disconnect() {
+      if(reconnectTimeout) {
+        clearTimeout(reconnectTimeout);
+        reconnectTimeout = null;
+      }
+      reconnectAttempts = maxReconnectAttempts; // Prevent auto-reconnect
+      
+      if(bleDevice && bleDevice.gatt.connected) {
+        bleDevice.gatt.disconnect();
+        log('Disconnected from device', 'info');
+      }
+      
+      oledDataChar = null;
+      controlChar = null;
+      speedChar = null;
+      updateConnectionStatus(false);
+    }
+
+    function onDisconnected() {
+      log('Connection lost', 'warning');
+      updateConnectionStatus(false);
+      
+      if(reconnectAttempts < maxReconnectAttempts) {
+        reconnectAttempts++;
+        log(`Auto-reconnect attempt ${reconnectAttempts}/${maxReconnectAttempts}...`, 'info');
+        
+        reconnectTimeout = setTimeout(async () => {
+          try {
+            await connectToDevice();
+            log('Reconnected successfully!', 'success');
+          } catch(error) {
+            log('Reconnection failed', 'error');
+            if(reconnectAttempts < maxReconnectAttempts) {
+              onDisconnected();
+            } else {
+              log('Max reconnect attempts reached. Please connect manually.', 'error');
+            }
+          }
+        }, 3000);
+      }
+    }
+
+    function updateConnectionStatus(connected) {
+      const badge = document.getElementById('connectionBadge');
+      const text = document.getElementById('connectionText');
+      const connectBtn = document.getElementById('connectBtn');
+      const disconnectBtn = document.getElementById('disconnectBtn');
+      
+      if(connected) {
+        badge.className = 'connection-badge connected';
+        text.textContent = 'Connected';
+        connectBtn.style.display = 'none';
+        disconnectBtn.style.display = '';
+        ['testBtn', 'clearBtn', 'frameSettingsBtn'].forEach(id => {
+          document.getElementById(id).disabled = false;
+        });
+        if(allFrames.length > 0) {
+          document.getElementById('sendBtn').disabled = false;
+        }
+      } else {
+        badge.className = 'connection-badge disconnected';
+        text.textContent = 'Disconnected';
+        connectBtn.style.display = '';
+        connectBtn.disabled = false;
+        disconnectBtn.style.display = 'none';
+        ['testBtn', 'clearBtn', 'sendBtn', 'frameSettingsBtn'].forEach(id => {
+          document.getElementById(id).disabled = true;
+        });
+      }
+    }
+
+    // ============================================
+    // DRAG & DROP
+    // ============================================
+    function setupDropZone() {
+      const dropZone = document.getElementById('dropZone');
+      
+      dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.classList.add('dragover');
+      });
+      
+      dropZone.addEventListener('dragleave', () => {
+        dropZone.classList.remove('dragover');
+      });
+      
+      dropZone.addEventListener('drop', async (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('dragover');
+        
+        const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+        if(files.length > 0) {
+          await loadFiles(files);
+        }
+      });
+    }
+
+    function setupFileInput() {
+      document.getElementById('fileInput').addEventListener('change', async (e) => {
+        const files = Array.from(e.target.files);
+        await loadFiles(files);
+        // Reset input so the same file can be re-selected
+        e.target.value = '';
+      });
+    }
+
+    // ============================================
+    // FILE LOADING
+    // ============================================
+    async function loadFiles(files) {
+      if(files.length === 0) return;
+      
+      allFrames = [];
+      frameSettings = [];
+      processedBitmaps = [];
+      stopAnimationPreview(); // Stop any running preview
+      
+      log(`Loading ${files.length} file(s)...`, 'info');
+      
+      for(let file of files) {
+        if(file.type === 'image/gif') {
+          await processGIF(file);
+        } else {
+          await processSingleImage(file);
+        }
+        
+        if(allFrames.length >= 60) {
+          log('Maximum 60 frames reached', 'warning');
+          break;
+        }
+      }
+      
+      if(allFrames.length > 0) {
+        currentFrameIndex = 0;
+        updateFrameStatus();
+        updateFramesGrid();
+        updatePreview();
+        
+        // Pre-generate all bitmaps
+        log('Processing all frames...', 'info');
+        for(let i = 0; i < allFrames.length; i++) {
+          currentFrameIndex = i;
+          updatePreview(); // Generates bitmap for this frame
+        }
+        currentFrameIndex = 0; // Reset to first frame
+        updatePreview();
+        updateFramesGrid();
+        
+        document.getElementById('sendBtn').disabled = !oledDataChar;
+        document.getElementById('prevBtn').disabled = true;
+        document.getElementById('nextBtn').disabled = allFrames.length <= 1;
+        document.getElementById('playBtn').disabled = allFrames.length <= 1;
+        log(`${allFrames.length} frame(s) loaded successfully`, 'success');
+        
+        setTimeout(() => checkIfBlackAndWhiteImage(), 500);
+      }
+    }
+
+    async function processSingleImage(file) {
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          const img = new Image();
+          img.onload = function() {
+            allFrames.push(img);
+            frameSettings.push({ background: 'black', duration: 0 });
+            resolve();
+          };
+          img.onerror = () => resolve();
+          img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    async function processGIF(file) {
+      try {
+        log(`Processing GIF: ${file.name}`, 'info');
+        
+        if(!window.gifuct || typeof window.gifuct.parseGIF !== 'function') {
+          log('GIF library not loaded. Using first frame only.', 'warning');
+          await processSingleImage(file);
+          return;
+        }
+        
+        const arrayBuffer = await file.arrayBuffer();
+        const gif = window.gifuct.parseGIF(arrayBuffer);
+        const decompressedFrames = window.gifuct.decompressFrames(gif, true);
+        
+        if(!decompressedFrames || decompressedFrames.length === 0) {
+          log('No frames found in GIF, loading as image', 'warning');
+          await processSingleImage(file);
+          return;
+        }
+        
+        log(`Found ${decompressedFrames.length} GIF frames, compositing...`, 'info');
+        
+        // Get full GIF canvas dimensions from Logical Screen Descriptor
+        const gifWidth = gif.lsd.width || decompressedFrames[0].dims.width;
+        const gifHeight = gif.lsd.height || decompressedFrames[0].dims.height;
+        
+        // Persistent compositing buffer — manual pixel compositing avoids
+        // subtle canvas alpha-blending / premultiplication issues that can
+        // cause color inversion or black frames on complex GIFs.
+        const compPixels = new Uint8ClampedArray(gifWidth * gifHeight * 4);
+        // Fill with opaque black (GIF background)
+        for(let p = 0; p < compPixels.length; p += 4) {
+          compPixels[p] = 0;
+          compPixels[p + 1] = 0;
+          compPixels[p + 2] = 0;
+          compPixels[p + 3] = 255;
+        }
+        
+        // Snapshot canvas only used for toDataURL export
+        const snapCanvas = document.createElement('canvas');
+        snapCanvas.width = gifWidth;
+        snapCanvas.height = gifHeight;
+        const snapCtx = snapCanvas.getContext('2d');
+        
+        const maxFrames = Math.min(decompressedFrames.length, 60 - allFrames.length);
+        
+        for(let i = 0; i < maxFrames; i++) {
+          const frame = decompressedFrames[i];
+          const patch = frame.patch;
+          const fw = frame.dims.width;
+          const fh = frame.dims.height;
+          const fl = frame.dims.left || 0;
+          const ft = frame.dims.top || 0;
+          
+          // Save compositing buffer before drawing (for disposal type 3)
+          let previousPixels = null;
+          if(frame.disposalType === 3) {
+            previousPixels = new Uint8ClampedArray(compPixels);
+          }
+          
+          // Manually composite the patch onto compPixels
+          // Transparent pixels (alpha=0) in the patch are skipped,
+          // preserving whatever was already on the compositing buffer.
+          for(let py = 0; py < fh; py++) {
+            for(let px = 0; px < fw; px++) {
+              const si = (py * fw + px) * 4;  // source index in patch
+              const sa = patch[si + 3];        // source alpha
+              
+              if(sa === 0) continue;  // transparent — skip (keep previous)
+              
+              const dx = fl + px;
+              const dy = ft + py;
+              if(dx >= gifWidth || dy >= gifHeight) continue;
+              
+              const di = (dy * gifWidth + dx) * 4;  // destination index
+              
+              if(sa === 255) {
+                // Fully opaque — direct copy (fast path)
+                compPixels[di]     = patch[si];
+                compPixels[di + 1] = patch[si + 1];
+                compPixels[di + 2] = patch[si + 2];
+                compPixels[di + 3] = 255;
+              } else {
+                // Semi-transparent — alpha blend (rare in GIFs but handle it)
+                const da = compPixels[di + 3];
+                const a = sa / 255;
+                const ia = 1 - a;
+                compPixels[di]     = Math.round(patch[si] * a + compPixels[di] * ia);
+                compPixels[di + 1] = Math.round(patch[si + 1] * a + compPixels[di + 1] * ia);
+                compPixels[di + 2] = Math.round(patch[si + 2] * a + compPixels[di + 2] * ia);
+                compPixels[di + 3] = Math.min(255, sa + Math.round(da * ia));
+              }
+            }
+          }
+          
+          // Capture the fully composed frame as an Image
+          const composedImageData = new ImageData(
+            new Uint8ClampedArray(compPixels), gifWidth, gifHeight
+          );
+          snapCtx.putImageData(composedImageData, 0, 0);
+          const composedDataURL = snapCanvas.toDataURL();
+          const img = await new Promise((resolve, reject) => {
+            const image = new Image();
+            image.onload = () => resolve(image);
+            image.onerror = () => reject(new Error('Failed to create frame'));
+            image.src = composedDataURL;
+          });
+          
+          allFrames.push(img);
+          // gifuct-js already converts delay to ms (gce.delay * 10)
+          const frameDelayMs = (frame.delay && frame.delay > 0) ? frame.delay : 100;
+          frameSettings.push({ background: 'black', duration: frameDelayMs });
+          
+          // Handle disposal method for the NEXT frame
+          if(frame.disposalType === 2) {
+            // Restore to background — clear the frame's area to opaque black
+            for(let py = 0; py < fh; py++) {
+              for(let px = 0; px < fw; px++) {
+                const dx = fl + px;
+                const dy = ft + py;
+                if(dx >= gifWidth || dy >= gifHeight) continue;
+                const di = (dy * gifWidth + dx) * 4;
+                compPixels[di] = 0;
+                compPixels[di + 1] = 0;
+                compPixels[di + 2] = 0;
+                compPixels[di + 3] = 255;
+              }
+            }
+          } else if(frame.disposalType === 3 && previousPixels) {
+            // Restore to previous state
+            compPixels.set(previousPixels);
+          }
+          // disposalType 0 or 1: keep current canvas (do nothing)
+        }
+        
+        log(`${allFrames.length} GIF frames extracted successfully`, 'success');
+        
+      } catch(error) {
+        log(`GIF error: ${error.message}. Trying as static image...`, 'error');
+        await processSingleImage(file);
+      }
+    }
+
+    function checkIfBlackAndWhiteImage() {
+      if(allFrames.length === 0) return;
+      
+      const img = allFrames[currentFrameIndex];
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.min(img.width, 128);
+      canvas.height = Math.min(img.height, 64);
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const pixels = imageData.data;
+      
+      let colorCount = 0;
+      let nearBWCount = 0;
+      const sampleSize = Math.min(1000, pixels.length / 4);
+      const step = Math.floor(pixels.length / (sampleSize * 4));
+      
+      for(let i = 0; i < pixels.length; i += step * 4) {
+        const r = pixels[i];
+        const g = pixels[i + 1];
+        const b = pixels[i + 2];
+        
+        const maxDiff = Math.max(Math.abs(r - g), Math.abs(r - b), Math.abs(g - b));
+        if(maxDiff > 30) {
+          colorCount++;
+        }
+        
+        const brightness = (r + g + b) / 3;
+        if(brightness < 50 || brightness > 205) {
+          nearBWCount++;
+        }
+      }
+      
+      const colorRatio = colorCount / sampleSize;
+      const bwRatio = nearBWCount / sampleSize;
+      
+      if(colorRatio < 0.1 && bwRatio > 0.6) {
+        log('Tip: Limited color image detected. Try "Auto-Optimize" for best results!', 'info');
+      }
+    }
+
+    // ============================================
+    // FRAME NAVIGATION
+    // ============================================
+    function prevFrame() {
+      stopAnimationPreview();
+      if(currentFrameIndex > 0) {
+        currentFrameIndex--;
+        updatePreview();
+        updateFramesGrid();
+        updateFrameStatus();
+        document.getElementById('prevBtn').disabled = currentFrameIndex === 0;
+        document.getElementById('nextBtn').disabled = false;
+      }
+    }
+
+    function nextFrame() {
+      stopAnimationPreview();
+      if(currentFrameIndex < allFrames.length - 1) {
+        currentFrameIndex++;
+        updatePreview();
+        updateFramesGrid();
+        updateFrameStatus();
+        document.getElementById('prevBtn').disabled = false;
+        document.getElementById('nextBtn').disabled = currentFrameIndex === allFrames.length - 1;
+      }
+    }
+
+    function selectFrame(index) {
+      stopAnimationPreview();
+      currentFrameIndex = index;
+      updateFramesGrid();
+      updatePreview();
+      updateFrameStatus();
+      document.getElementById('prevBtn').disabled = currentFrameIndex === 0;
+      document.getElementById('nextBtn').disabled = currentFrameIndex === allFrames.length - 1;
+    }
+
+    function deleteFrame(index) {
+      stopAnimationPreview();
+      if(confirm(`Delete frame ${index + 1}?`)) {
+        allFrames.splice(index, 1);
+        frameSettings.splice(index, 1);
+        processedBitmaps.splice(index, 1);
+        
+        if(currentFrameIndex >= allFrames.length) {
+          currentFrameIndex = Math.max(0, allFrames.length - 1);
+        }
+        
+        updateFrameStatus();
+        updateFramesGrid();
+        updatePreview();
+        log(`Frame ${index + 1} deleted`, 'info');
+      }
+    }
+
+    // ============================================
+    // ANIMATION PREVIEW
+    // ============================================
+    function toggleAnimationPreview() {
+      if(isPreviewPlaying) {
+        stopAnimationPreview();
+      } else {
+        startAnimationPreview();
+      }
+    }
+
+    function startAnimationPreview() {
+      if(allFrames.length <= 1) return;
+      
+      isPreviewPlaying = true;
+      document.getElementById('playBtn').textContent = '\u23f9';
+      document.getElementById('playBtn').title = 'Stop preview';
+      document.getElementById('prevBtn').disabled = true;
+      document.getElementById('nextBtn').disabled = true;
+      log('Animation preview playing...', 'info');
+      
+      animateNextFrame();
+    }
+
+    function animateNextFrame() {
+      if(!isPreviewPlaying || allFrames.length <= 1) return;
+      
+      currentFrameIndex = (currentFrameIndex + 1) % allFrames.length;
+      updatePreview();
+      updateFramesGrid();
+      updateFrameStatus();
+      
+      // Use per-frame delay if set, otherwise use global speed
+      const frameDelay = (frameSettings[currentFrameIndex] && frameSettings[currentFrameIndex].duration > 0)
+        ? frameSettings[currentFrameIndex].duration
+        : animationSpeed;
+      
+      animationPreviewTimer = setTimeout(animateNextFrame, frameDelay);
+    }
+
+    function stopAnimationPreview() {
+      if(animationPreviewTimer) {
+        clearTimeout(animationPreviewTimer);
+        animationPreviewTimer = null;
+      }
+      if(isPreviewPlaying) {
+        isPreviewPlaying = false;
+        document.getElementById('playBtn').textContent = '\u25b6';
+        document.getElementById('playBtn').title = 'Preview animation';
+        document.getElementById('prevBtn').disabled = currentFrameIndex === 0;
+        document.getElementById('nextBtn').disabled = currentFrameIndex === allFrames.length - 1;
+      }
+    }
+
+    // ============================================
+    // FRAMES GRID
+    // ============================================
+    function updateFramesGrid() {
+      const grid = document.getElementById('framesGrid');
+      const frameCount = document.getElementById('frameCount');
+      
+      frameCount.textContent = `(${allFrames.length})`;
+      grid.innerHTML = '';
+      
+      if(allFrames.length === 0) {
+        grid.innerHTML = `
+          <div class="frames-empty">
+            <div class="frames-empty-icon">📁</div>
+            <div>No frames loaded</div>
+          </div>
+        `;
+        return;
+      }
+      
+      allFrames.forEach((img, index) => {
+        const item = document.createElement('div');
+        item.className = 'frame-item';
+        if(index === currentFrameIndex) item.classList.add('active');
+        item.setAttribute('role', 'button');
+        item.setAttribute('tabindex', '0');
+        item.setAttribute('aria-label', `Frame ${index + 1}`);
+        
+        const canvas = document.createElement('canvas');
+        canvas.width = 128;
+        canvas.height = 64;
+        const ctx = canvas.getContext('2d');
+        
+        const settings = frameSettings[index];
+        ctx.fillStyle = settings.background === 'white' ? '#fff' : '#000';
+        ctx.fillRect(0, 0, 128, 64);
+        
+        if(settings.background === 'fit') {
+          ctx.drawImage(img, 0, 0, 128, 64);
+        } else {
+          const scale = Math.min(128 / img.width, 64 / img.height);
+          const x = (128 - img.width * scale) / 2;
+          const y = (64 - img.height * scale) / 2;
+          ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
+        }
+        
+        const badge = document.createElement('div');
+        badge.className = 'frame-badge';
+        badge.textContent = index + 1;
+        
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'frame-delete';
+        deleteBtn.textContent = '✕';
+        deleteBtn.setAttribute('aria-label', `Delete frame ${index + 1}`);
+        deleteBtn.onclick = (e) => {
+          e.stopPropagation();
+          deleteFrame(index);
+        };
+        
+        item.appendChild(canvas);
+        item.appendChild(badge);
+        item.appendChild(deleteBtn);
+        
+        item.onclick = () => selectFrame(index);
+        item.onkeydown = (e) => {
+          if(e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            selectFrame(index);
+          }
+        };
+        
+        grid.appendChild(item);
+      });
+    }
+
+    // ============================================
+    // AUTO THRESHOLD (OTSU'S METHOD)
+    // ============================================
+    function calculateOtsuThreshold(pixels) {
+      const histogram = new Array(256).fill(0);
+      
+      for(let i = 0; i < pixels.length; i += 4) {
+        const r = pixels[i];
+        const g = pixels[i + 1];
+        const b = pixels[i + 2];
+        const gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
+        histogram[gray]++;
+      }
+      
+      const total = pixels.length / 4;
+      let sum = 0;
+      for(let i = 0; i < 256; i++) {
+        sum += i * histogram[i];
+      }
+      
+      let sumB = 0;
+      let wB = 0;
+      let wF = 0;
+      let maxVariance = 0;
+      let threshold = 128;
+      
+      for(let t = 0; t < 256; t++) {
+        wB += histogram[t];
+        if(wB === 0) continue;
+        
+        wF = total - wB;
+        if(wF === 0) break;
+        
+        sumB += t * histogram[t];
+        
+        const mB = sumB / wB;
+        const mF = (sum - sumB) / wF;
+        
+        const variance = wB * wF * (mB - mF) * (mB - mF);
+        
+        if(variance > maxVariance) {
+          maxVariance = variance;
+          threshold = t;
+        }
+      }
+      
+      return threshold;
+    }
+    
+    function autoThreshold() {
+      if(allFrames.length === 0) return;
+      
+      const img = allFrames[currentFrameIndex];
+      const canvas = document.createElement('canvas');
+      canvas.width = 128;
+      canvas.height = 64;
+      const ctx = canvas.getContext('2d');
+      
+      ctx.fillStyle = 'white';
+      ctx.fillRect(0, 0, 128, 64);
+      
+      const scale = Math.min(128 / img.width, 64 / img.height);
+      const x = (128 - img.width * scale) / 2;
+      const y = (64 - img.height * scale) / 2;
+      ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
+      
+      const imageData = ctx.getImageData(0, 0, 128, 64);
+      const optimalThreshold = calculateOtsuThreshold(imageData.data);
+      
+      document.getElementById('thresholdSlider').value = optimalThreshold;
+      document.getElementById('thresholdValue').textContent = optimalThreshold;
+      
+      log('Auto-optimized: threshold set to ' + optimalThreshold, 'success');
+      updatePreview();
+    }
+
+    // ============================================
+    // PREVIEW & IMAGE PROCESSING
+    // ============================================
+    function updatePreview() {
+      if(allFrames.length === 0) return;
+      
+      const img = allFrames[currentFrameIndex];
+      const settings = frameSettings[currentFrameIndex];
+      const threshold = parseInt(document.getElementById('thresholdSlider').value);
+      const brightness = parseInt(document.getElementById('brightnessSlider').value);
+      const contrast = parseInt(document.getElementById('contrastSlider').value) / 100;
+      const invert = document.getElementById('invertToggle').classList.contains('active');
+      
+      const canvas = document.getElementById('previewCanvas');
+      const ctx = canvas.getContext('2d');
+      
+      ctx.fillStyle = settings.background === 'white' ? '#fff' : '#000';
+      ctx.fillRect(0, 0, 128, 64);
+      
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = 128;
+      tempCanvas.height = 64;
+      const tempCtx = tempCanvas.getContext('2d');
+      
+      if(settings.background === 'fit') {
+        tempCtx.drawImage(img, 0, 0, 128, 64);
+      } else {
+        const scale = Math.min(128 / img.width, 64 / img.height);
+        const x = (128 - img.width * scale) / 2;
+        const y = (64 - img.height * scale) / 2;
+        tempCtx.fillStyle = settings.background === 'white' ? '#fff' : '#000';
+        tempCtx.fillRect(0, 0, 128, 64);
+        tempCtx.drawImage(img, x, y, img.width * scale, img.height * scale);
+      }
+      
+      const imageData = tempCtx.getImageData(0, 0, 128, 64);
+      const pixels = imageData.data;
+      
+      for(let i = 0; i < pixels.length; i += 4) {
+        let r = pixels[i];
+        let g = pixels[i + 1];
+        let b = pixels[i + 2];
+        
+        r = Math.min(255, Math.max(0, r + brightness));
+        g = Math.min(255, Math.max(0, g + brightness));
+        b = Math.min(255, Math.max(0, b + brightness));
+        
+        r = Math.min(255, Math.max(0, ((r - 128) * contrast) + 128));
+        g = Math.min(255, Math.max(0, ((g - 128) * contrast) + 128));
+        b = Math.min(255, Math.max(0, ((b - 128) * contrast) + 128));
+        
+        const gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
+        const bw = gray >= threshold ? 255 : 0;
+        const final = invert ? 255 - bw : bw;
+        
+        pixels[i] = final;
+        pixels[i + 1] = final;
+        pixels[i + 2] = final;
+      }
+      
+      ctx.putImageData(imageData, 0, 0);
+      
+      processedBitmaps[currentFrameIndex] = imageToBitmap(imageData);
+    }
+
+    function imageToBitmap(imageData) {
+      const pixels = imageData.data;
+      const bytes = [];
+      
+      // XBM format: horizontal scan, LSB first
+      // 128 pixels wide = 16 bytes per row
+      // 64 rows total = 1024 bytes
+      for(let y = 0; y < 64; y++) {
+        for(let xByte = 0; xByte < 16; xByte++) {
+          let byte = 0;
+          for(let bit = 0; bit < 8; bit++) {
+            const x = xByte * 8 + bit;
+            const index = (y * 128 + x) * 4;
+            // Check if pixel is white (bright)
+            if(pixels[index] > 127) {
+              byte |= (1 << bit); // LSB first
+            }
+          }
+          bytes.push(byte);
+        }
+      }
+      
+      return new Uint8Array(bytes);
+    }
+
+    function updateFrameStatus() {
+      if(allFrames.length === 0) {
+        document.getElementById('frameInfo').textContent = 'No frames loaded';
+        return;
+      }
+      
+      const info = `Frame ${currentFrameIndex + 1}/${allFrames.length}`;
+      document.getElementById('frameInfo').textContent = info;
+    }
+
+    // ============================================
+    // SEND TO DISPLAY
+    // ============================================
+    async function sendToDisplay() {
+      if(!oledDataChar || allFrames.length === 0) return;
+      stopAnimationPreview(); // Stop preview before sending
+      
+      // Check if still connected
+      if(!bleDevice || !bleDevice.gatt.connected) {
+        log('Device not connected. Please reconnect.', 'error');
+        updateConnectionStatus(false);
+        return;
+      }
+      
+      // Helper: write with retry on GATT errors
+      async function bleWriteWithRetry(characteristic, data, maxRetries = 3) {
+        for(let attempt = 0; attempt < maxRetries; attempt++) {
+          try {
+            await characteristic.writeValue(data);
+            return;
+          } catch(e) {
+            if(attempt < maxRetries - 1) {
+              const backoff = 200 * (attempt + 1);
+              log(`Write retry ${attempt + 1}/${maxRetries} (waiting ${backoff}ms)...`, 'warning');
+              await new Promise(resolve => setTimeout(resolve, backoff));
+              
+              // Check connection is still alive
+              if(!bleDevice || !bleDevice.gatt.connected) {
+                throw new Error('Connection lost');
+              }
+            } else {
+              throw e;
+            }
+          }
+        }
+      }
+      
+      try {
+        log(`Sending ${allFrames.length} frame(s)... Do not switch tabs.`, 'info');
+        document.getElementById('sendBtn').disabled = true;
+        
+        const framesToSend = allFrames.length;
+        
+        // Pre-generate all bitmaps first to avoid work during send
+        for(let i = 0; i < framesToSend; i++) {
+          if(!processedBitmaps[i] || processedBitmaps[i].length !== 1024) {
+            currentFrameIndex = i;
+            updatePreview();
+          }
+        }
+        
+        // Send frame count
+        await bleWriteWithRetry(controlChar, new Uint8Array([framesToSend]));
+        await new Promise(resolve => setTimeout(resolve, 200));
+        
+        for(let i = 0; i < framesToSend; i++) {
+          // Check if still connected before each frame
+          if(!bleDevice || !bleDevice.gatt.connected) {
+            log(`Connection lost at frame ${i + 1}. Stopping send.`, 'error');
+            throw new Error('Connection lost during send');
+          }
+          
+          // Lightweight status update (no grid rebuild)
+          currentFrameIndex = i;
+          document.getElementById('frameInfo').textContent = `Sending ${i + 1}/${framesToSend}`;
+          
+          const bitmap = processedBitmaps[i];
+          
+          // Validate bitmap exists
+          if(!bitmap || bitmap.length !== 1024) {
+            log(`Error: Invalid bitmap for frame ${i + 1}`, 'error');
+            continue;
+          }
+          
+          // Send two 512-byte chunks with retry and proper delays
+          for(let chunk = 0; chunk < 2; chunk++) {
+            const start = chunk * 512;
+            const data = bitmap.slice(start, start + 512);
+            
+            await bleWriteWithRetry(oledDataChar, data);
+            // 150ms between chunks — gives Arduino time to copy + keeps BLE alive
+            await new Promise(resolve => setTimeout(resolve, 150));
+          }
+          
+          // 200ms between frames — Arduino needs time to allocate + store
+          await new Promise(resolve => setTimeout(resolve, 200));
+          log(`Frame ${i + 1}/${framesToSend} sent`, 'success');
+        }
+        
+        // Set animation speed
+        if(speedChar && animationSpeed) {
+          try {
+            await new Promise(resolve => setTimeout(resolve, 200));
+            const buffer = new ArrayBuffer(2);
+            const view = new DataView(buffer);
+            view.setUint16(0, animationSpeed, true);
+            await bleWriteWithRetry(speedChar, buffer);
+            await new Promise(resolve => setTimeout(resolve, 100));
+            log(`Speed set to ${animationSpeed}ms`, 'success');
+          } catch(e) {
+            log('Could not set speed', 'warning');
+          }
+        }
+        
+        // Send start animation command
+        await new Promise(resolve => setTimeout(resolve, 200));
+        await bleWriteWithRetry(controlChar, new Uint8Array([255]));
+        await new Promise(resolve => setTimeout(resolve, 100));
+        log('All frames sent successfully!', 'success');
+        
+        // Restore preview
+        currentFrameIndex = 0;
+        updatePreview();
+        updateFramesGrid();
+        updateFrameStatus();
+        
+      } catch(error) {
+        log('Send error: ' + error.message, 'error');
+      } finally {
+        document.getElementById('sendBtn').disabled = false;
+      }
+    }
+
+    async function clearDisplay() {
+      if(!controlChar) return;
+      
+      try {
+        await controlChar.writeValue(new Uint8Array([254]));
+        log('Display cleared', 'success');
+      } catch(error) {
+        log('Clear error: ' + error.message, 'error');
+      }
+    }
+
+    async function sendTestPattern() {
+      if(!oledDataChar || !controlChar) return;
+      
+      try {
+        log('Sending test pattern...', 'info');
+        
+        // Tell Arduino to prepare for 1 frame
+        await controlChar.writeValue(new Uint8Array([1]));
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        const bitmap = new Uint8Array(1024);
+        for(let i = 0; i < 1024; i++) {
+          bitmap[i] = (i % 2 === 0) ? 0xFF : 0x00;
+        }
+        
+        // Send two 512-byte chunks with proper delays
+        await oledDataChar.writeValue(bitmap.slice(0, 512));
+        await new Promise(resolve => setTimeout(resolve, 50));
+        await oledDataChar.writeValue(bitmap.slice(512, 1024));
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        // Start animation
+        await controlChar.writeValue(new Uint8Array([255]));
+        log('Test pattern sent', 'success');
+      } catch(error) {
+        log('Test error: ' + error.message, 'error');
+      }
+    }
+
+    // ============================================
+    // CONTROLS & SETTINGS
+    // ============================================
+    function updateSpeed() {
+      animationSpeed = parseInt(document.getElementById('speedSlider').value);
+      document.getElementById('speedValue').textContent = formatSpeed(animationSpeed);
+    }
+
+    function formatSpeed(ms) {
+      if(ms < 1000) return ms + 'ms';
+      const secs = ms / 1000;
+      if(secs < 60) return secs % 1 === 0 ? secs + 's' : secs.toFixed(1) + 's';
+      const mins = Math.floor(secs / 60);
+      const remainSecs = Math.round(secs % 60);
+      return remainSecs > 0 ? mins + 'm ' + remainSecs + 's' : mins + 'm';
+    }
+
+    function toggleInvert() {
+      const toggle = document.getElementById('invertToggle');
+      toggle.classList.toggle('active');
+      const isActive = toggle.classList.contains('active');
+      toggle.setAttribute('aria-checked', isActive);
+      updatePreview();
+    }
+
+    function resetSettings() {
+      document.getElementById('thresholdSlider').value = 128;
+      document.getElementById('thresholdValue').textContent = '128';
+      document.getElementById('brightnessSlider').value = 0;
+      document.getElementById('brightnessValue').textContent = '0';
+      document.getElementById('contrastSlider').value = 100;
+      document.getElementById('contrastValue').textContent = '100%';
+      document.getElementById('speedSlider').value = 100;
+      document.getElementById('speedValue').textContent = '100ms';
+      
+      const toggle = document.getElementById('invertToggle');
+      toggle.classList.remove('active');
+      toggle.setAttribute('aria-checked', 'false');
+      
+      animationSpeed = 100;
+      updatePreview();
+      log('Settings reset to defaults', 'info');
+    }
+
+    function applySettingsToAllFrames() {
+      if(allFrames.length === 0) {
+        log('No frames loaded', 'warning');
+        return;
+      }
+      
+      const threshold = parseInt(document.getElementById('thresholdSlider').value);
+      const brightness = parseInt(document.getElementById('brightnessSlider').value);
+      const contrast = parseInt(document.getElementById('contrastSlider').value) / 100;
+      const invert = document.getElementById('invertToggle').classList.contains('active');
+      
+      const savedIndex = currentFrameIndex;
+      
+      for(let i = 0; i < allFrames.length; i++) {
+        currentFrameIndex = i;
+        
+        const img = allFrames[i];
+        const settings = frameSettings[i];
+        
+        const canvas = document.getElementById('previewCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        ctx.fillStyle = settings.background === 'white' ? '#fff' : '#000';
+        ctx.fillRect(0, 0, 128, 64);
+        
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = 128;
+        tempCanvas.height = 64;
+        const tempCtx = tempCanvas.getContext('2d');
+        
+        if(settings.background === 'fit') {
+          tempCtx.drawImage(img, 0, 0, 128, 64);
+        } else {
+          const scale = Math.min(128 / img.width, 64 / img.height);
+          const x = (128 - img.width * scale) / 2;
+          const y = (64 - img.height * scale) / 2;
+          tempCtx.fillStyle = settings.background === 'white' ? '#fff' : '#000';
+          tempCtx.fillRect(0, 0, 128, 64);
+          tempCtx.drawImage(img, x, y, img.width * scale, img.height * scale);
+        }
+        
+        const imageData = tempCtx.getImageData(0, 0, 128, 64);
+        const pixels = imageData.data;
+        
+        for(let p = 0; p < pixels.length; p += 4) {
+          let r = pixels[p], g = pixels[p + 1], b = pixels[p + 2];
+          r = Math.min(255, Math.max(0, r + brightness));
+          g = Math.min(255, Math.max(0, g + brightness));
+          b = Math.min(255, Math.max(0, b + brightness));
+          r = Math.min(255, Math.max(0, ((r - 128) * contrast) + 128));
+          g = Math.min(255, Math.max(0, ((g - 128) * contrast) + 128));
+          b = Math.min(255, Math.max(0, ((b - 128) * contrast) + 128));
+          const gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
+          const bw = gray >= threshold ? 255 : 0;
+          const final_ = invert ? 255 - bw : bw;
+          pixels[p] = final_;
+          pixels[p + 1] = final_;
+          pixels[p + 2] = final_;
+        }
+        
+        processedBitmaps[i] = imageToBitmap(imageData);
+      }
+      
+      currentFrameIndex = savedIndex;
+      updatePreview();
+      updateFramesGrid();
+      log(`Settings applied to all ${allFrames.length} frames`, 'success');
+    }
+
+    // Update slider displays
+    document.getElementById('thresholdSlider').addEventListener('input', (e) => {
+      document.getElementById('thresholdValue').textContent = e.target.value;
+    });
+
+    document.getElementById('brightnessSlider').addEventListener('input', (e) => {
+      document.getElementById('brightnessValue').textContent = e.target.value;
+    });
+
+    document.getElementById('contrastSlider').addEventListener('input', (e) => {
+      document.getElementById('contrastValue').textContent = e.target.value + '%';
+    });
+
+    // ============================================
+    // FRAME SETTINGS MODAL
+    // ============================================
+    function openFrameSettings() {
+      if(allFrames.length === 0) return;
+      
+      const modal = document.getElementById('frameModal');
+      modal.classList.add('active');
+      
+      const settings = frameSettings[currentFrameIndex];
+      selectBg(settings.background);
+      
+      const duration = settings.duration || 0;
+      document.getElementById('frameDurationSlider').value = duration;
+      updateFrameDuration();
+    }
+
+    function closeFrameSettings() {
+      document.getElementById('frameModal').classList.remove('active');
+    }
+
+    function selectBg(mode) {
+      currentBgMode = mode;
+      document.querySelectorAll('.bg-option').forEach(opt => opt.classList.remove('active'));
+      document.querySelector(`.bg-option.${mode}`).classList.add('active');
+    }
+
+    function updateFrameDuration() {
+      const value = parseInt(document.getElementById('frameDurationSlider').value);
+      document.getElementById('frameDurationValue').textContent = value === 0 ? 'Default' : value + 'ms';
+    }
+
+    function applyFrameSettings() {
+      if(allFrames.length === 0) return;
+      
+      frameSettings[currentFrameIndex].background = currentBgMode;
+      frameSettings[currentFrameIndex].duration = parseInt(document.getElementById('frameDurationSlider').value);
+      
+      updatePreview();
+      updateFramesGrid();
+      closeFrameSettings();
+      log('Frame settings applied', 'success');
+    }
+
+    // Close modal on backdrop click
+    document.getElementById('frameModal').addEventListener('click', (e) => {
+      if(e.target.id === 'frameModal') {
+        closeFrameSettings();
+      }
+    });
+
+    // Keyboard navigation
+    document.addEventListener('keydown', (e) => {
+      const modal = document.getElementById('frameModal');
+      if(modal.classList.contains('active') && e.key === 'Escape') {
+        closeFrameSettings();
+      }
+    });
+  </script>
+</body>
+</html>
